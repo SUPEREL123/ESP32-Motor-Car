@@ -26,6 +26,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             --card: #1e293b;
             --text: #e2e8f0;
             --danger: #f87171;
+            --success: #22c55e;
         }
 
         * {
@@ -56,6 +57,7 @@ const char MAIN_page[] PROGMEM = R"=====(
                 0 0 0 1px rgba(255,255,255,0.08) inset;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.07);
+            position: relative;
         }
 
         h1 {
@@ -90,6 +92,8 @@ const char MAIN_page[] PROGMEM = R"=====(
             transition: all 0.25s ease;
             font-weight: 600;
             min-width: 140px;
+            text-decoration: none;
+            text-align: center;
         }
 
         .led-on {
@@ -163,15 +167,43 @@ const char MAIN_page[] PROGMEM = R"=====(
             transition: all 0.3s ease;
             margin-top: 1.5rem;
             box-shadow: 0 10px 30px rgba(0,212,255,0.35);
+            position: relative;
+            overflow: hidden;
         }
 
-        .btn-run:hover {
+        .btn-run:hover:not(:disabled) {
             transform: translateY(-3px);
             box-shadow: 0 15px 40px rgba(0,212,255,0.5);
         }
 
-        .btn-run:active {
+        .btn-run:active:not(:disabled) {
             transform: translateY(1px);
+        }
+
+        .btn-run:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            background: #475569;
+            box-shadow: none;
+        }
+
+        /* Subtle Finish Message */
+        #finish-msg {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--success);
+            font-weight: 600;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: all 0.4s ease;
+            pointer-events: none;
+        }
+
+        #finish-msg.show {
+            bottom: 10px;
+            opacity: 1;
         }
 
         .footer {
@@ -214,7 +246,8 @@ const char MAIN_page[] PROGMEM = R"=====(
                value="100"
                oninput="document.getElementById('speedValue').textContent = this.value">
 
-        <button class="btn-run" onclick="runMotor()">START MOTOR</button>
+        <button id="runBtn" class="btn-run" onclick="runMotor()">START MOTOR</button>
+        <div id="finish-msg">✓ Finish</div>
     </div>
 
     <div class="footer">
@@ -224,8 +257,36 @@ const char MAIN_page[] PROGMEM = R"=====(
 
 <script>
 function runMotor() {
+    const btn = document.getElementById('runBtn');
+    const msg = document.getElementById('finish-msg');
     const speed = document.getElementById('speed').value;
-    window.location.href = `/run?speed=${speed}`;
+    
+    // Disable button and show running state
+    btn.disabled = true;
+    btn.innerText = "RUNNING...";
+    msg.classList.remove('show');
+
+    // Use fetch to call the /run endpoint without reloading the page
+    fetch(`/run?speed=${speed}`)
+        .then(response => {
+            // Re-enable button
+            btn.disabled = false;
+            btn.innerText = "START MOTOR";
+            
+            if (response.ok) {
+                // Show subtle finish message
+                msg.classList.add('show');
+                // Hide it after 3 seconds
+                setTimeout(() => {
+                    msg.classList.remove('show');
+                }, 3000);
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            btn.disabled = false;
+            btn.innerText = "START MOTOR";
+        });
 }
 </script>
 
@@ -240,9 +301,6 @@ function runMotor() {
 const char* ssid = "Sakuragi10";
 const char* password = "daddymummy123";
 
-
-
-
 /// set var
 /// Motor A
 int ENA = 4;
@@ -253,9 +311,6 @@ int IN2 = 2;
 int ENB = 5;   // PWM pin for speed control of Motor B
 int IN3 = 7;   // Direction pin 1 for Motor B
 int IN4 = 8;   // Direction pin 2 for Motor B
-
-// make move for func
-
 
 //Declare a global object variable from the ESP8266WebServer class.
 ESP8266WebServer server(80); //Server on port 80
@@ -272,48 +327,41 @@ void handleRoot() {
 void handleLEDon() { 
  Serial.println("LED on page");
  digitalWrite(LED,LOW); //LED is connected in reverse
- server.send(200, "text/html", "LED is ON"); //Send ADC value only to client ajax request
-
+ server.send(200, "text/html", "LED is ON"); 
 }
 
 void handleLEDoff() { 
  Serial.println("LED off page");
  digitalWrite(LED,HIGH); //LED off
- server.send(200, "text/html", "LED is OFF"); //Send ADC value only to client ajax request
+ server.send(200, "text/html", "LED is OFF"); 
 }
 
-
-
 void moveMotorA() {
-
   if (server.hasArg("speed")) {
     String speed_string = server.arg("speed");
     int speed = speed_string.toInt();
-    analogWrite(ENA, speed); // set speed to 200 out of possible range 0~255
+    analogWrite(ENA, speed); 
   } else {
-    digitalWrite(ENA, HIGH); // set speed to 200 out of possible range 0~255
+    digitalWrite(ENA, HIGH); 
   }
 
+  // turn on motor
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
   
-// turn on motor
-
-digitalWrite(IN1, HIGH);
-digitalWrite(IN2, LOW);
-
-delay(2000); // now change motor directions
-
-digitalWrite(IN1, LOW);
-digitalWrite(IN2, HIGH);
-
-delay(2000); // now turn off motors
-
-digitalWrite(IN1, LOW);
-digitalWrite(IN2, LOW);
-
- server.send(200, "text/html", "run once is done"); //Send ADC value only to client ajax request
-
+  delay(2000); // now change motor directions
+  
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  
+  delay(2000); // now turn off motors
+  
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  
+  // Send a simple OK response for the AJAX request
+  server.send(200, "text/plain", "OK"); 
 }
-
 
 //==============================================================
 //                  SETUP
@@ -338,11 +386,7 @@ void setup(void){
     pinMode(ENA, OUTPUT);
     pinMode(IN1, OUTPUT);
     pinMode(IN2, OUTPUT);
-    //////
   }
-
-
-  
 
   //If connection successful show IP address in serial monitor
   Serial.println("");
@@ -351,21 +395,17 @@ void setup(void){
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());  //IP address assigned to your ESP
  
-  server.on("/", handleRoot);      //Which routine to handle at root location. This is display page
-  server.on("/ledOn", handleLEDon); //as Per  <a href="ledOn">, Subroutine to be called
+  server.on("/", handleRoot);      
+  server.on("/ledOn", handleLEDon); 
   server.on("/ledOff", handleLEDoff);
-  server.on("/run",moveMotorA);
+  server.on("/run", moveMotorA);
 
-  server.begin();                  //Start server
-  // Serial.println("HTTP server started");
+  server.begin();                  
 }
-
-
 
 //==============================================================
 //                     LOOP
 //==============================================================
 void loop(void){
-  server.handleClient();          //Handle client requests
-
+  server.handleClient();          
 }
