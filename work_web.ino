@@ -13,40 +13,221 @@
 //Our HTML webpage contents in program memory
 const char MAIN_page[] PROGMEM = R"=====(
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>ESP32 Motor Controller</title>
+    <style>
+        :root {
+            --primary: #00d4ff;
+            --primary-dark: #0095b3;
+            --bg-dark: #0f172a;
+            --card: #1e293b;
+            --text: #e2e8f0;
+            --danger: #f87171;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .controller {
+            background: var(--card);
+            border-radius: 24px;
+            padding: 2.5rem 2rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 
+                0 25px 50px -12px rgba(0,0,0,0.6),
+                0 0 0 1px rgba(255,255,255,0.08) inset;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.07);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.1rem;
+            margin-bottom: 2rem;
+            color: var(--primary);
+            text-shadow: 0 0 20px rgba(0,212,255,0.4);
+            letter-spacing: -0.5px;
+        }
+
+        .status {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+
+        .led-section {
+            display: flex;
+            justify-content: center;
+            gap: 2.5rem;
+            margin: 2rem 0;
+        }
+
+        .led-btn {
+            padding: 1rem 2.2rem;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-weight: 600;
+            min-width: 140px;
+        }
+
+        .led-on {
+            background: #22c55e;
+            color: white;
+            box-shadow: 0 0 25px rgba(34,197,94,0.5);
+        }
+
+        .led-off {
+            background: #ef4444;
+            color: white;
+            box-shadow: 0 0 25px rgba(239,68,68,0.4);
+        }
+
+        .led-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        }
+
+        .motor-control {
+            background: rgba(0,0,0,0.2);
+            padding: 1.8rem;
+            border-radius: 16px;
+            margin: 2rem 0;
+        }
+
+        .speed-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.8rem;
+            font-weight: 500;
+        }
+
+        .speed-value {
+            color: var(--primary);
+            font-weight: bold;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 10px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 28px;
+            height: 28px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0,212,255,0.6);
+            border: 3px solid #0f172a;
+        }
+
+        .btn-run {
+            width: 100%;
+            padding: 1.3rem;
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d4ff, #0891b2);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0,212,255,0.35);
+        }
+
+        .btn-run:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0,212,255,0.5);
+        }
+
+        .btn-run:active {
+            transform: translateY(1px);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            opacity: 0.6;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+    </style>
+</head>
 <body>
-<center>
-<h1>WiFi LED on off demo: 1</h1><br>
-Ciclk to turn <a href="ledOn">LED ON</a><br>
-Ciclk to turn <a href="ledOff">LED OFF</a><br>
 
+<div class="controller">
+    <h1>ESP32 Motor Controller</h1>
+    
+    <div class="status">Motor & LED Control</div>
 
+    <!-- LED Control -->
+    <div class="led-section">
+        <a href="ledOn" class="led-btn led-on">LED ON</a>
+        <a href="ledOff" class="led-btn led-off">LED OFF</a>
+    </div>
 
-<label for="speed">Enter speed (e.g., 0-255):</label><br>
-<input type="number" id="speed" name="speed" min="0" max="255" value="100"><br><br>
+    <!-- Motor Control -->
+    <div class="motor-control">
+        <div class="speed-label">
+            <span>Speed</span>
+            <span class="speed-value" id="speedValue">100</span>
+        </div>
 
-<button onclick="runMotor()">Turn Motor ON</button>
+        <input type="range" 
+               id="speed" 
+               min="0" 
+               max="255" 
+               value="100"
+               oninput="document.getElementById('speedValue').textContent = this.value">
+
+        <button class="btn-run" onclick="runMotor()">START MOTOR</button>
+    </div>
+
+    <div class="footer">
+        <a href="https://circuits4you.com" target="_blank">circuits4you.com</a>
+    </div>
+</div>
 
 <script>
 function runMotor() {
-    // Get the value from the input box
-    let speed = document.getElementById('speed').value;
-    
-    // Optional: basic validation
-    if (speed === '' || speed < 0 || speed > 255) {
-        alert('Please enter a valid speed between 0 and 255');
-        return;
-    }
-    
-    // Redirect to /run?speed=XXX
-    window.location.href = '/run?speed=' + speed;
+    const speed = document.getElementById('speed').value;
+    window.location.href = `/run?speed=${speed}`;
 }
 </script>
-
-
-<hr>
-<a href="https://circuits4you.com">circuits4you.com</a>
-</center>
 
 </body>
 </html>
